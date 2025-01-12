@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime
+import pytz  # For timezone handling
 import unicodedata
 import re
 import gspread
@@ -23,12 +24,22 @@ def normalize_text(text):
     text = re.sub(r'[^\w\s]', '', text)
     return text.lower().replace(" ", "_")
 
-def save_to_google_sheet(date, document_name, hyperlink):
+def extract_year(date_str):
+    """Extract the year from a date string in dd/mm/yyyy HH:MM format."""
+    try:
+        return datetime.strptime(date_str, "%d/%m/%Y %H:%M").year
+    except ValueError:
+        return ""
+
+def save_to_google_sheet(date, document_name, hyperlink, category, year):
     """Save data to Google Sheet with corrected hyperlink format."""
     client = gspread.authorize(CREDENTIALS)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
     # Append data as a row to the sheet
-    sheet.append_row([date, f'=HYPERLINK("{hyperlink}";"{document_name}")'], value_input_option="USER_ENTERED")
+    sheet.append_row(
+        [date, f'=HYPERLINK("{hyperlink}";"{document_name}")', year, category], 
+        value_input_option="USER_ENTERED"
+    )
 
 def upload_to_google_drive(file, file_name):
     """Upload file to Google Drive and return file ID."""
@@ -38,20 +49,34 @@ def upload_to_google_drive(file, file_name):
     uploaded_file = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
     return uploaded_file.get("id")
 
+# Get current datetime in Vietnam timezone
+def get_vietnam_time():
+    vietnam_tz = pytz.timezone("Asia/Ho_Chi_Minh")
+    return datetime.now(vietnam_tz).strftime("%d/%m/%Y %H:%M")
+
 # Streamlit UI
 st.title("Upload Hồ sơ và Lưu trữ Google Drive/Sheet")
 
 # Input fields
-date = st.text_input("Ngày", datetime.now().strftime("%d/%m/%Y %H:%M"))
+date = st.text_input("Ngày", get_vietnam_time())  # Default to Vietnam time
 document_name = st.text_input("Tên tài liệu/hồ sơ")
+
+# Dropdown for "Loại"
+category = st.selectbox(
+    "Loại",
+    ["Học tập Gia Lộc", "Học Tập Gia Phú", "Giấy tờ HC"]
+)
 
 # File upload
 uploaded_file = st.file_uploader("Đính kèm tài liệu/hồ sơ", type=["pdf", "docx", "xlsx", "png", "jpg", "jpeg"])
 
 if st.button("Lưu"):
-    if not document_name or not uploaded_file:
+    if not document_name or not uploaded_file or not category:
         st.error("Vui lòng nhập đầy đủ thông tin và tải lên file!")
     else:
+        # Extract year from the date
+        year = extract_year(date)
+        
         # Normalize and save the file
         normalized_name = normalize_text(document_name) + os.path.splitext(uploaded_file.name)[1]
         with open(normalized_name, "wb") as f:
@@ -64,7 +89,7 @@ if st.button("Lưu"):
         file_link = f"https://drive.google.com/file/d/{file_id}/view"
         
         # Save data to Google Sheet
-        save_to_google_sheet(date, document_name, file_link)
+        save_to_google_sheet(date, document_name, file_link, category, year)
         
         # Cleanup
         os.remove(normalized_name)
