@@ -27,8 +27,8 @@ def save_to_google_sheet(date, document_name, hyperlink):
     """Save data to Google Sheet with corrected hyperlink format."""
     client = gspread.authorize(CREDENTIALS)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    # Correct hyperlink format with ";" separator
-    sheet.append_row([date, f'=HYPERLINK("{hyperlink}";"{document_name}")'])
+    # Append data as a row to the sheet
+    sheet.append_row([date, f'=HYPERLINK("{hyperlink}";"{document_name}")'], value_input_option="USER_ENTERED")
 
 def upload_to_google_drive(file, file_name):
     """Upload file to Google Drive and return file ID."""
