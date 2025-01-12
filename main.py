@@ -24,10 +24,11 @@ def normalize_text(text):
     return text.lower().replace(" ", "_")
 
 def save_to_google_sheet(date, document_name, hyperlink):
-    """Save data to Google Sheet with hyperlink."""
+    """Save data to Google Sheet with corrected hyperlink format."""
     client = gspread.authorize(CREDENTIALS)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    sheet.append_row([date, f'=HYPERLINK("{hyperlink}", "{document_name}")'])
+    # Correct hyperlink format with ";" separator
+    sheet.append_row([date, f'=HYPERLINK("{hyperlink}";"{document_name}")'])
 
 def upload_to_google_drive(file, file_name):
     """Upload file to Google Drive and return file ID."""
