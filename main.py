@@ -60,13 +60,10 @@ category = st.selectbox(
     ["Giấy tờ HC", "Học tập Gia Lộc", "Học tập Gia Phú"]
 )
 
-# Year input for "Năm TL/HS"
-year_input = st.date_input(
-    "Năm TL/HS",
-    value=datetime.now(),
-    format="YYYY"
-)
-year = year_input.year  # Extract year from the selected date
+# Year input for "Năm TL/HS" using selectbox
+current_year = datetime.now().year
+years = [str(y) for y in range(1900, current_year + 1)]  # Generate a list of years from 1900 to current year
+year = st.selectbox("Năm TL/HS", reversed(years))  # Show years in descending order
 
 # File upload
 uploaded_file = st.file_uploader("Đính kèm tài liệu/hồ sơ", type=["pdf", "docx", "xlsx", "png", "jpg", "jpeg"])
