@@ -57,14 +57,16 @@ document_name = st.text_input("Tên tài liệu/hồ sơ")
 # Dropdown for "Loại"
 category = st.selectbox(
     "Loại",
-    ["Học tập Gia Lộc", "Học Tập Gia Phú", "Giấy tờ HC"]
+    ["Giấy tờ HC", "Học tập Gia Lộc", "Học tập Gia Phú"]
 )
 
 # Year input for "Năm TL/HS"
-year = st.text_input(
+year_input = st.date_input(
     "Năm TL/HS",
-    datetime.now().strftime("%Y")  # Default to current year
+    value=datetime.now(),
+    format="YYYY"
 )
+year = year_input.year  # Extract year from the selected date
 
 # File upload
 uploaded_file = st.file_uploader("Đính kèm tài liệu/hồ sơ", type=["pdf", "docx", "xlsx", "png", "jpg", "jpeg"])
