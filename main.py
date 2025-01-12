@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import datetime
-import pytz  # For timezone handling
+import pytz
 import unicodedata
 import re
 import gspread
@@ -17,27 +17,20 @@ CREDENTIALS = Credentials.from_service_account_info(st.secrets["google"], scopes
 DRIVE_FOLDER_ID = "1MD1jvHEXX1CbHN-ISydzTa6t69xRNfHY"
 SPREADSHEET_ID = "1H-7ycEtf8lFQqLCEbeLkRS61rBY3XZWtTkQuEV7GATY"
 
-def normalize_text(text):
-    """Convert text to lowercase and remove accents."""
+def normalize_text_to_title(text):
+    """Convert text to lowercase, remove accents, and capitalize each word."""
     text = unicodedata.normalize('NFD', text)
     text = text.encode('ascii', 'ignore').decode("utf-8")
     text = re.sub(r'[^\w\s]', '', text)
-    return text.lower().replace(" ", "_")
-
-def extract_year(date_str):
-    """Extract the year from a date string in dd/mm/yyyy HH:MM format."""
-    try:
-        return datetime.strptime(date_str, "%d/%m/%Y %H:%M").year
-    except ValueError:
-        return ""
+    return text.title().replace(" ", "_")  # Capitalize each word and replace spaces with underscores
 
 def save_to_google_sheet(date, document_name, hyperlink, category, year):
-    """Save data to Google Sheet with corrected hyperlink format."""
+    """Save data to Google Sheet."""
     client = gspread.authorize(CREDENTIALS)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    # Append data as a row to the sheet
+    # Append data to the sheet
     sheet.append_row(
-        [date, f'=HYPERLINK("{hyperlink}";"{document_name}")', year, category], 
+        [date, f'=HYPERLINK("{hyperlink}";"{document_name}")', year, category],
         value_input_option="USER_ENTERED"
     )
 
@@ -55,7 +48,7 @@ def get_vietnam_time():
     return datetime.now(vietnam_tz).strftime("%d/%m/%Y %H:%M")
 
 # Streamlit UI
-st.title("Upload Hồ sơ và Lưu trữ Google Drive/Sheet")
+st.title("Quản lý TL-HS gia đình")
 
 # Input fields
 date = st.text_input("Ngày", get_vietnam_time())  # Default to Vietnam time
@@ -67,18 +60,21 @@ category = st.selectbox(
     ["Học tập Gia Lộc", "Học Tập Gia Phú", "Giấy tờ HC"]
 )
 
+# Year input for "Năm TL/HS"
+year = st.text_input(
+    "Năm TL/HS",
+    datetime.now().strftime("%Y")  # Default to current year
+)
+
 # File upload
 uploaded_file = st.file_uploader("Đính kèm tài liệu/hồ sơ", type=["pdf", "docx", "xlsx", "png", "jpg", "jpeg"])
 
 if st.button("Lưu"):
-    if not document_name or not uploaded_file or not category:
+    if not document_name or not uploaded_file or not category or not year:
         st.error("Vui lòng nhập đầy đủ thông tin và tải lên file!")
     else:
-        # Extract year from the date
-        year = extract_year(date)
-        
-        # Normalize and save the file
-        normalized_name = normalize_text(document_name) + os.path.splitext(uploaded_file.name)[1]
+        # Normalize and save the file with Title Case
+        normalized_name = normalize_text_to_title(document_name) + os.path.splitext(uploaded_file.name)[1]
         with open(normalized_name, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
