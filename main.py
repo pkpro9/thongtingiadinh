@@ -23,14 +23,14 @@ def normalize_text(text):
     text = re.sub(r'[^\w\s]', '', text)
     return text.lower().replace(" ", "_")
 
-def save_to_google_sheet(date, document_name):
-    """Save data to Google Sheet."""
+def save_to_google_sheet(date, document_name, hyperlink):
+    """Save data to Google Sheet with hyperlink."""
     client = gspread.authorize(CREDENTIALS)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    sheet.append_row([date, document_name])
+    sheet.append_row([date, f'=HYPERLINK("{hyperlink}", "{document_name}")'])
 
 def upload_to_google_drive(file, file_name):
-    """Upload file to Google Drive."""
+    """Upload file to Google Drive and return file ID."""
     service = build("drive", "v3", credentials=CREDENTIALS)
     media = MediaFileUpload(file, resumable=True)
     file_metadata = {"name": file_name, "parents": [DRIVE_FOLDER_ID]}
@@ -59,11 +59,14 @@ if st.button("Lưu"):
         # Upload file to Google Drive
         file_id = upload_to_google_drive(normalized_name, normalized_name)
         
+        # Generate hyperlink
+        file_link = f"https://drive.google.com/file/d/{file_id}/view"
+        
         # Save data to Google Sheet
-        save_to_google_sheet(date, document_name)
+        save_to_google_sheet(date, document_name, file_link)
         
         # Cleanup
         os.remove(normalized_name)
         
         st.success("Dữ liệu đã được lưu thành công!")
-        st.info(f"File đã được tải lên Google Drive với ID: {file_id}")
+        st.info(f"File đã được tải lên Google Drive với liên kết: {file_link}")
