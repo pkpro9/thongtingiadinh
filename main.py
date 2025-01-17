@@ -37,9 +37,9 @@ def save_to_google_sheet(stt, date, document_name, hyperlink, category, year):
     """Save data to Google Sheet."""
     client = gspread.authorize(CREDENTIALS)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    # Append data to the sheet
+    # Append data to the sheet with STT in Hyperlink Name
     sheet.append_row(
-        [stt, date, f'=HYPERLINK("{hyperlink}";"{document_name}")', year, category],
+        [stt, date, f'=HYPERLINK("{hyperlink}";"{stt}. {document_name}")', year, category],
         value_input_option="USER_ENTERED"
     )
 
@@ -98,7 +98,7 @@ if st.button("Lưu"):
         # Generate hyperlink
         file_link = f"https://drive.google.com/file/d/{file_id}/view"
         
-        # Save data to Google Sheet with STT
+        # Save data to Google Sheet with STT in Hyperlink Name
         save_to_google_sheet(stt, date, document_name, file_link, category, year)
         
         # Cleanup
