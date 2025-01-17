@@ -13,8 +13,15 @@ import os
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 CREDENTIALS = Credentials.from_service_account_info(st.secrets["google"], scopes=SCOPES)
 
-# Google Drive and Sheet setup
-DRIVE_FOLDER_ID = "1MD1jvHEXX1CbHN-ISydzTa6t69xRNfHY"
+# Google Drive & Sheet mapping
+SHEET_MAPPING = {
+    "Hồ sơ gia đình": ("TTHC_GIA_DINH", "1MD1jvHEXX1CbHN-ISydzTa6t69xRNfHY"),
+    "Quyết định-Hợp đồng-Khác": ("QD_HD_KHAC", "1zPfNupTE8P5XnXqhRaoZ3k5lHwwC5WFa"),
+    "Bằng cấp-Chứng chỉ": ("BANG_CAP", "1b0KkS894xUH_-y5UqScyvjiUkgcdOUgZ"),
+    "CME": ("CME", "1z2J5raE8UprnDd5-s8Jcoy0ucIh2Wnp_"),
+    "Khen Thưởng": ("KHEN_THUONG", "14s0HEXN10gLVXw7mT0-7fkeWciZDxGNY"),
+}
+
 SPREADSHEET_ID = "1H-7ycEtf8lFQqLCEbeLkRS61rBY3XZWtTkQuEV7GATY"
 
 def normalize_text_to_title(text):
@@ -24,30 +31,29 @@ def normalize_text_to_title(text):
     text = re.sub(r'[^\w\s]', '', text)
     return text.title().replace(" ", "_")  # Capitalize each word and replace spaces with underscores
 
-def get_next_stt():
+def get_next_stt(sheet_name):
     """Retrieve the next available STT (ID) from the Google Sheet."""
     client = gspread.authorize(CREDENTIALS)
-    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    data = sheet.get_all_values()  # Get all rows
-    if len(data) > 2:  # Check if there are existing rows (excluding headers)
-        return len(data) - 2 + 1  # Start counting from 1 (assuming headers in first two rows)
-    return 1  # Start from 1 if no data
+    sheet = client.open_by_key(SPREADSHEET_ID).worksheet(sheet_name)
+    data = sheet.get_all_values()  
+    if len(data) > 2:  
+        return len(data) - 2 + 1  
+    return 1  
 
-def save_to_google_sheet(stt, date, document_name, hyperlink, category, year):
-    """Save data to Google Sheet."""
+def save_to_google_sheet(sheet_name, stt, date, document_name, hyperlink, category, year):
+    """Save data to the correct sheet in Google Sheets."""
     client = gspread.authorize(CREDENTIALS)
-    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
-    # Append data to the sheet with STT in Hyperlink Name
+    sheet = client.open_by_key(SPREADSHEET_ID).worksheet(sheet_name)
     sheet.append_row(
         [stt, date, f'=HYPERLINK("{hyperlink}";"{stt}. {document_name}")', year, category],
         value_input_option="USER_ENTERED"
     )
 
-def upload_to_google_drive(file, file_name):
-    """Upload file to Google Drive and return file ID."""
+def upload_to_google_drive(folder_id, file, file_name):
+    """Upload file to the correct Google Drive folder and return file ID."""
     service = build("drive", "v3", credentials=CREDENTIALS)
     media = MediaFileUpload(file, resumable=True)
-    file_metadata = {"name": file_name, "parents": [DRIVE_FOLDER_ID]}
+    file_metadata = {"name": file_name, "parents": [folder_id]}
     uploaded_file = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
     return uploaded_file.get("id")
 
@@ -59,11 +65,20 @@ def get_vietnam_time():
 # Streamlit UI
 st.title("Quản lý TL-HS gia đình")
 
+# Menu chọn loại hồ sơ
+category_type = st.sidebar.selectbox(
+    "Chọn loại hồ sơ",
+    list(SHEET_MAPPING.keys())
+)
+
+# Lấy sheet name và folder tương ứng
+sheet_name, folder_id = SHEET_MAPPING[category_type]
+
 # Get next STT
-stt = get_next_stt()
+stt = get_next_stt(sheet_name)
 
 # Input fields
-date = st.text_input("Ngày", get_vietnam_time())  # Default to Vietnam time
+date = st.text_input("Ngày", get_vietnam_time())  
 document_name = st.text_input("Tên tài liệu/hồ sơ")
 
 # Dropdown for "Loại"
@@ -74,8 +89,8 @@ category = st.selectbox(
 
 # Year input for "Năm TL/HS" using selectbox
 current_year = datetime.now().year
-years = [str(y) for y in range(1900, current_year + 1)]  # Generate a list of years from 1900 to current year
-year = st.selectbox("Năm TL/HS", reversed(years))  # Show years in descending order
+years = [str(y) for y in range(1900, current_year + 1)]
+year = st.selectbox("Năm TL/HS", reversed(years))
 
 # File upload
 uploaded_file = st.file_uploader("Đính kèm tài liệu/hồ sơ", type=["pdf", "docx", "xlsx", "png", "jpg", "jpeg"])
@@ -86,23 +101,22 @@ if st.button("Lưu"):
     else:
         # Normalize and save the file with Title Case
         normalized_name = normalize_text_to_title(document_name) + os.path.splitext(uploaded_file.name)[1]
-        # Thêm STT vào đầu tên file
         file_with_stt = f"{stt}. {normalized_name}"
 
         with open(file_with_stt, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
-        # Upload file to Google Drive
-        file_id = upload_to_google_drive(file_with_stt, file_with_stt)
+        # Upload file to correct Google Drive folder
+        file_id = upload_to_google_drive(folder_id, file_with_stt, file_with_stt)
         
         # Generate hyperlink
         file_link = f"https://drive.google.com/file/d/{file_id}/view"
         
-        # Save data to Google Sheet with STT in Hyperlink Name
-        save_to_google_sheet(stt, date, document_name, file_link, category, year)
+        # Save data to the correct Google Sheet
+        save_to_google_sheet(sheet_name, stt, date, document_name, file_link, category, year)
         
         # Cleanup
         os.remove(file_with_stt)
         
-        st.success(f"Dữ liệu đã được lưu thành công với STT: {stt}!")
+        st.success(f"Dữ liệu đã được lưu vào '{sheet_name}' thành công với STT: {stt}!")
         st.info(f"File đã được tải lên Google Drive với tên: {file_with_stt}")
