@@ -22,6 +22,15 @@ SHEET_MAPPING = {
     "Khen Thưởng": ("KHEN_THUONG", "14s0HEXN10gLVXw7mT0-7fkeWciZDxGNY"),
 }
 
+# Dropdown options for each menu
+CATEGORY_OPTIONS = {
+    "Hồ sơ gia đình": ["Giấy tờ HC", "Học tập Gia Lộc", "Học tập Gia Phú"],
+    "Quyết định-Hợp đồng-Khác": ["Quyết định", "Hợp đồng", "Chứng nhận", "Thông báo", "Cam kết", "Khác"],
+    "Bằng cấp-Chứng chỉ": ["Bằng TN", "Chứng chỉ", "Chứng nhận", "Công nhận", "Bảng điểm", "Khác"],
+    "CME": ["CME", "Chứng chỉ", "Chứng nhận", "Khác"],
+    "Khen Thưởng": ["Giấy khen", "Bằng khen", "Danh hiệu", "Biểu dương", "Khác"],
+}
+
 SPREADSHEET_ID = "1H-7ycEtf8lFQqLCEbeLkRS61rBY3XZWtTkQuEV7GATY"
 
 def normalize_text_to_title(text):
@@ -82,10 +91,7 @@ date = st.text_input("Ngày", get_vietnam_time())
 document_name = st.text_input("Tên tài liệu/hồ sơ")
 
 # Dropdown for "Loại"
-category = st.selectbox(
-    "Loại",
-    ["Giấy tờ HC", "Học tập Gia Lộc", "Học tập Gia Phú"]
-)
+category = st.selectbox("Loại", CATEGORY_OPTIONS[category_type])
 
 # Year input for "Năm TL/HS" using selectbox
 current_year = datetime.now().year
