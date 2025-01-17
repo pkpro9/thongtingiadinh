@@ -24,13 +24,22 @@ def normalize_text_to_title(text):
     text = re.sub(r'[^\w\s]', '', text)
     return text.title().replace(" ", "_")  # Capitalize each word and replace spaces with underscores
 
-def save_to_google_sheet(date, document_name, hyperlink, category, year):
+def get_next_stt():
+    """Retrieve the next available STT (ID) from the Google Sheet."""
+    client = gspread.authorize(CREDENTIALS)
+    sheet = client.open_by_key(SPREADSHEET_ID).sheet1
+    data = sheet.get_all_values()  # Get all rows
+    if len(data) > 2:  # Check if there are existing rows (excluding headers)
+        return len(data) - 2 + 1  # Start counting from 1 (assuming headers in first two rows)
+    return 1  # Start from 1 if no data
+
+def save_to_google_sheet(stt, date, document_name, hyperlink, category, year):
     """Save data to Google Sheet."""
     client = gspread.authorize(CREDENTIALS)
     sheet = client.open_by_key(SPREADSHEET_ID).sheet1
     # Append data to the sheet
     sheet.append_row(
-        [date, f'=HYPERLINK("{hyperlink}";"{document_name}")', year, category],
+        [stt, date, f'=HYPERLINK("{hyperlink}";"{document_name}")', year, category],
         value_input_option="USER_ENTERED"
     )
 
@@ -49,6 +58,9 @@ def get_vietnam_time():
 
 # Streamlit UI
 st.title("Quản lý TL-HS gia đình")
+
+# Get next STT
+stt = get_next_stt()
 
 # Input fields
 date = st.text_input("Ngày", get_vietnam_time())  # Default to Vietnam time
@@ -74,20 +86,23 @@ if st.button("Lưu"):
     else:
         # Normalize and save the file with Title Case
         normalized_name = normalize_text_to_title(document_name) + os.path.splitext(uploaded_file.name)[1]
-        with open(normalized_name, "wb") as f:
+        # Thêm STT vào đầu tên file
+        file_with_stt = f"{stt}. {normalized_name}"
+
+        with open(file_with_stt, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
         # Upload file to Google Drive
-        file_id = upload_to_google_drive(normalized_name, normalized_name)
+        file_id = upload_to_google_drive(file_with_stt, file_with_stt)
         
         # Generate hyperlink
         file_link = f"https://drive.google.com/file/d/{file_id}/view"
         
-        # Save data to Google Sheet
-        save_to_google_sheet(date, document_name, file_link, category, year)
+        # Save data to Google Sheet with STT
+        save_to_google_sheet(stt, date, document_name, file_link, category, year)
         
         # Cleanup
-        os.remove(normalized_name)
+        os.remove(file_with_stt)
         
-        st.success("Dữ liệu đã được lưu thành công!")
-        st.info(f"File đã được tải lên Google Drive với liên kết: {file_link}")
+        st.success(f"Dữ liệu đã được lưu thành công với STT: {stt}!")
+        st.info(f"File đã được tải lên Google Drive với tên: {file_with_stt}")
