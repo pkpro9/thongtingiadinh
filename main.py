@@ -49,12 +49,12 @@ def get_next_stt(sheet_name):
         return len(data) - 2 + 1  
     return 1  
 
-def save_to_google_sheet(sheet_name, stt, date, document_name, hyperlink, category, year):
+def save_to_google_sheet(sheet_name, stt, date, document_name, hyperlink, category, year, issuing_place):
     """Save data to the correct sheet in Google Sheets."""
     client = gspread.authorize(CREDENTIALS)
     sheet = client.open_by_key(SPREADSHEET_ID).worksheet(sheet_name)
     sheet.append_row(
-        [stt, date, f'=HYPERLINK("{hyperlink}";"{stt}. {document_name}")', year, category],
+        [stt, date, f'=HYPERLINK("{hyperlink}";"{stt}. {document_name}")', year, category, issuing_place],
         value_input_option="USER_ENTERED"
     )
 
@@ -98,11 +98,14 @@ current_year = datetime.now().year
 years = [str(y) for y in range(1900, current_year + 1)]
 year = st.selectbox("Năm TL/HS", reversed(years))
 
+# Text input for "Nơi ban hành"
+issuing_place = st.text_input("Nơi ban hành")
+
 # File upload
 uploaded_file = st.file_uploader("Đính kèm tài liệu/hồ sơ", type=["pdf", "docx", "xlsx", "png", "jpg", "jpeg"])
 
 if st.button("Lưu"):
-    if not document_name or not uploaded_file or not category or not year:
+    if not document_name or not uploaded_file or not category or not year or not issuing_place:
         st.error("Vui lòng nhập đầy đủ thông tin và tải lên file!")
     else:
         # Normalize and save the file with Title Case
@@ -119,7 +122,7 @@ if st.button("Lưu"):
         file_link = f"https://drive.google.com/file/d/{file_id}/view"
         
         # Save data to the correct Google Sheet
-        save_to_google_sheet(sheet_name, stt, date, document_name, file_link, category, year)
+        save_to_google_sheet(sheet_name, stt, date, document_name, file_link, category, year, issuing_place)
         
         # Cleanup
         os.remove(file_with_stt)
